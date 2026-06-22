@@ -56,7 +56,7 @@ const ChapterNode = ({ event, index }: { event: any; index: number }) => {
           <div className={`absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent pointer-events-none transition-opacity duration-700 ${isInView ? "opacity-100" : "opacity-0"}`} />
           
           <div className="absolute -top-16 left-8 w-32 h-32 z-30 cursor-pointer pointer-events-auto">
-            <Canvas camera={{ position: [0, 1.5, 4], fov: 45 }} transparent>
+            <Canvas camera={{ position: [0, 1.5, 4], fov: 45 }}>
               <Environment preset="city" />
               <ambientLight intensity={0.7} />
               <directionalLight position={[10, 10, 5]} intensity={1.5} />

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Caveat, Quicksand } from "next/font/google";
 import "@/styles/globals.css";
-import { Navbar } from "@/components/navigation/Navbar"; // New modular import
+import { Navbar } from "@/components/navigation/SmartNav"; // New modular import
 
 const fontCaveat = Caveat({
   subsets: ["latin"],
