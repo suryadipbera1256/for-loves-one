@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Caveat, Quicksand } from "next/font/google";
 import "@/styles/globals.css";
-import { Navbar } from "@/components/navigation/SmartNav"; // New modular import
+import { SmartNav } from "@/components/navigation/SmartNav"; 
 
 const fontCaveat = Caveat({
   subsets: ["latin"],
@@ -30,7 +30,7 @@ export default function RootLayout({
       <body className="bg-black antialiased selection:bg-cyan-500/30 font-sans">
         
         {/* Injected Global Smart Navbar */}
-        <Navbar />
+        <SmartNav />
 
         {children}
       </body>
