@@ -1,11 +1,48 @@
 "use client";
 
 import { useRef } from "react";
-import { motion, useScroll, useSpring, useInView } from "framer-motion";
+import { motion, useScroll, useSpring, useInView, MotionValue } from "framer-motion";
 import Image from "next/image";
 import { STORY_DATA } from "@/lib/constants";
 
-// Chapter Node - Clean, Glassmorphic, High Visibility
+// The Dense, Animated Organic Root Network Component
+const OrganicRootNetwork = ({ progress }: { progress: MotionValue<number> }) => {
+  return (
+    <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 1000">
+      <defs>
+        {/* Glow for the main active roots */}
+        <linearGradient id="neonRootGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#22d3ee" stopOpacity="0.9" />
+          <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.7" />
+          <stop offset="100%" stopColor="#0284c7" stopOpacity="0.9" />
+        </linearGradient>
+      </defs>
+
+      {/* BACKGROUND SCATTERED ROOTS (These spread densely everywhere) */}
+      <motion.path d="M 50,0 C 40,100 10,150 20,250 C 30,350 0,450 15,550 C 30,650 5,750 20,850 C 35,950 10,1000 10,1000" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" style={{ pathLength: progress }} />
+      <motion.path d="M 50,0 C 60,80 90,120 80,220 C 70,320 100,420 85,520 C 70,620 95,720 80,820 C 65,920 90,1000 90,1000" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" style={{ pathLength: progress }} />
+      <motion.path d="M 45,50 C 25,150 5,200 15,300 C 25,400 -5,500 10,600 C 25,700 0,800 15,900" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="0.8" style={{ pathLength: progress }} />
+      <motion.path d="M 55,50 C 75,150 95,200 85,300 C 75,400 105,500 90,600 C 75,700 100,800 85,900" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1.2" style={{ pathLength: progress }} />
+      <motion.path d="M 50,100 C 80,250 20,400 70,550 C 20,700 80,850 30,1000" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="2" style={{ pathLength: progress }} />
+
+      {/* THE MAIN THICK WINDING ROOT */}
+      {/* Faint Track */}
+      <path d="M 50,0 C 60,100 30,200 50,300 C 70,400 40,500 50,600 C 60,700 30,800 50,900 C 70,950 50,1000 50,1000" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="5" />
+      {/* Glowing Animated Core */}
+      <motion.path
+        d="M 50,0 C 60,100 30,200 50,300 C 70,400 40,500 50,600 C 60,700 30,800 50,900 C 70,950 50,1000 50,1000"
+        fill="none"
+        stroke="url(#neonRootGradient)"
+        strokeWidth="6"
+        strokeLinecap="round"
+        className="drop-shadow-[0_0_15px_rgba(6,182,212,0.8)]"
+        style={{ pathLength: progress }}
+      />
+    </svg>
+  );
+};
+
+// Chapter Node - Handles the Middle Branches and Glow Connections
 const ChapterNode = ({ event, index }: { event: any; index: number }) => {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: false, margin: "-40% 0px -40% 0px" });
@@ -14,18 +51,16 @@ const ChapterNode = ({ event, index }: { event: any; index: number }) => {
   return (
     <div ref={ref} className={`relative w-full flex ${isEven ? "md:justify-start" : "md:justify-end"} justify-end items-center md:my-32 my-24`}>
       
-      {/* ORGANIC CHILD BRANCH (DESKTOP) - Clean White Line, No Neon Glow */}
-      <div className={`absolute top-1/2 -translate-y-1/2 ${isEven ? 'right-[42%] left-1/2' : 'left-[42%] right-1/2'} h-24 z-0 hidden md:block`}>
+      {/* MIDDLE BRANCH (DESKTOP) - Organic Wavy Connections */}
+      <div className={`absolute top-1/2 -translate-y-1/2 ${isEven ? 'right-[42%] left-1/2' : 'left-[42%] right-1/2'} h-32 z-0 hidden md:block`}>
         <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 50">
-          {/* Faint background path */}
-          <path d={isEven ? "M 0,25 Q 50,0 100,25" : "M 100,25 Q 50,50 0,25"} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="2" strokeLinecap="round" />
-          {/* Animated connection line */}
           <motion.path
-            d={isEven ? "M 0,25 Q 50,0 100,25" : "M 100,25 Q 50,50 0,25"}
+            d={isEven ? "M 0,25 C 30,50 40,0 100,25" : "M 100,25 C 70,50 60,0 0,25"}
             fill="none"
-            stroke="rgba(255,255,255,0.8)" // High visibility white
-            strokeWidth="2"
+            stroke="url(#branchNeonGlow)"
+            strokeWidth="3"
             strokeLinecap="round"
+            className="drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]"
             initial={{ pathLength: 0, opacity: 0 }}
             animate={isInView ? { pathLength: 1, opacity: 1 } : { pathLength: 0, opacity: 0 }}
             transition={{ duration: 0.8, ease: "easeInOut" }}
@@ -33,15 +68,14 @@ const ChapterNode = ({ event, index }: { event: any; index: number }) => {
         </svg>
       </div>
 
-      {/* ORGANIC CHILD BRANCH (MOBILE) */}
-      <div className="absolute top-1/2 -translate-y-1/2 left-6 right-[85%] h-16 z-0 md:hidden block">
+      {/* MIDDLE BRANCH (MOBILE) */}
+      <div className="absolute top-1/2 -translate-y-1/2 left-6 right-[85%] h-20 z-0 md:hidden block">
         <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 50">
-          <path d="M 0,25 Q 50,0 100,25" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="2" strokeLinecap="round" />
           <motion.path
-            d="M 0,25 Q 50,0 100,25"
+            d="M 0,25 C 30,50 40,0 100,25"
             fill="none"
-            stroke="rgba(255,255,255,0.8)"
-            strokeWidth="2"
+            stroke="url(#branchNeonGlow)"
+            strokeWidth="3"
             strokeLinecap="round"
             initial={{ pathLength: 0, opacity: 0 }}
             animate={isInView ? { pathLength: 1, opacity: 1 } : { pathLength: 0, opacity: 0 }}
@@ -50,7 +84,16 @@ const ChapterNode = ({ event, index }: { event: any; index: number }) => {
         </svg>
       </div>
 
-      {/* The Glassmorphic Chapter Box */}
+      <svg className="hidden">
+        <defs>
+          <linearGradient id="branchNeonGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#0ea5e9" stopOpacity="1" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      {/* The Glassmorphic Chapter Box with Connection Glow */}
       <motion.div
         initial={{ opacity: 0, y: 50 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -62,21 +105,23 @@ const ChapterNode = ({ event, index }: { event: any; index: number }) => {
           className={`relative backdrop-blur-2xl rounded-2xl overflow-hidden
             transition-all duration-700 ease-in-out transform border
             ${isInView 
-              ? "bg-white/10 border-white/20 shadow-[0_8px_32px_0_rgba(255,255,255,0.05)] scale-[1.02]" 
-              : "bg-white/5 border-white/5 shadow-2xl scale-100 grayscale-[50%]"
+              ? "bg-neutral-900/80 border-cyan-400 shadow-[0_0_30px_rgba(6,182,212,0.3)] scale-[1.02]" 
+              : "bg-white/5 border-white/5 shadow-2xl scale-100 grayscale-[40%]"
             }`}
         >
+          {/* Internal Neon Glow triggered on connection */}
+          <div className={`absolute inset-0 bg-gradient-to-br from-cyan-500/15 to-transparent pointer-events-none transition-opacity duration-700 ${isInView ? "opacity-100" : "opacity-0"}`} />
+
           <div className="relative h-60 md:h-72 w-[calc(100%-16px)] mx-2 mt-2 rounded-t-lg rounded-b-xl overflow-hidden">
             <Image src={event.mediaUrl} alt={event.title} fill className={`object-cover transition-transform duration-1000 ${isInView ? "scale-105" : "scale-100"}`} sizes="(max-width: 768px) 100vw, 50vw" />
             
-            {/* Elegant dark overlay for text visibility */}
             <div className={`absolute inset-0 transition-colors duration-700 ${isInView ? "bg-gradient-to-t from-black/95 via-black/40 to-transparent" : "bg-black/70"}`} />
             
             <div className="absolute bottom-6 left-6 right-6">
-              <span className={`px-3 py-1 text-xs font-mono rounded-full mb-3 inline-block transition-colors duration-700 ${isInView ? "text-black bg-white/90 shadow-md font-bold" : "text-neutral-400 bg-neutral-900/80 border border-white/5"}`}>
+              <span className={`px-3 py-1 text-xs font-mono rounded-full mb-3 inline-block transition-colors duration-700 ${isInView ? "text-cyan-900 bg-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.8)] font-bold" : "text-neutral-400 bg-neutral-900/80 border border-white/5"}`}>
                 Chapter {index + 1}
               </span>
-              <h3 className={`text-2xl md:text-3xl font-handwriting tracking-wide transition-colors duration-700 ${isInView ? "text-white" : "text-neutral-500"}`}>
+              <h3 className={`text-2xl md:text-3xl font-handwriting tracking-wide transition-colors duration-700 ${isInView ? "text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" : "text-neutral-500"}`}>
                 {event.title}
               </h3>
             </div>
@@ -110,7 +155,7 @@ export default function RoadmapPage() {
   return (
     <main className="relative min-h-[400vh] select-none bg-black" ref={containerRef}>
       
-      {/* PHASE 1: THE TREE CANOPY (Hero Section - Elegant Black & White Theme) */}
+      {/* PHASE 1: THE TREE CANOPY (Hero Section) */}
       <section className="relative w-full h-[100vh] bg-gradient-to-b from-[#f4eee1] via-[#e8dec7] to-black overflow-hidden flex flex-col items-center justify-start pt-20">
         
         {/* Abstract Tree Silhouette */}
@@ -129,58 +174,37 @@ export default function RoadmapPage() {
           </p>
         </div>
 
-        {/* The Ground & Couple Silhouette */}
-        <div className="absolute bottom-0 w-full h-[30vh] bg-black rounded-t-[50%] md:rounded-t-[100%] shadow-[0_-20px_60px_rgba(0,0,0,0.9)] z-20 flex justify-center items-start pt-6">
-          <div className="relative -mt-[80px] w-24 h-24 opacity-70">
-            <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="w-full h-full">
-              <path d="M9 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="white"/>
-              <path d="M15 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" fill="white"/>
-              <path d="M9 7v5l-2 5m2-5h3m3-5v5l2 5m-2-5h-3"/>
-              <path d="M9 12l2 8m4-8l-2 8"/>
-            </svg>
+        {/* The Ground Layer - Solid Black Curve */}
+        <div className="absolute bottom-0 w-full h-[25vh] md:h-[35vh] bg-black rounded-t-[50%] md:rounded-t-[100%] shadow-[0_-20px_60px_rgba(0,0,0,0.9)] z-20 flex justify-center items-end">
+          
+          {/* THE RAW PNG IMAGE - NO BORDERS, NO CONTAINERS */}
+          {/* Placed dynamically so the ground of the image matches the black ground curve */}
+          <div className="relative w-[280px] h-[280px] md:w-[420px] md:h-[420px] -mb-[8%] md:-mb-[5%] z-30 pointer-events-none">
+            <Image 
+              src="/image/roadmap header.png" 
+              alt="Beautiful Couple" 
+              fill 
+              className="object-contain object-bottom drop-shadow-[0_10px_30px_rgba(0,0,0,0.8)]" 
+              sizes="(max-width: 768px) 280px, 420px"
+              priority
+            />
           </div>
+          
         </div>
       </section>
 
-      {/* PHASE 2: THE ROOTS UNDERGROUND (Black & White Theme) */}
+      {/* PHASE 2: THE ROOTS UNDERGROUND */}
       <section className="relative w-full pt-10 pb-48 bg-black">
         
-        {/* Background Transparent Spreading Roots Network */}
-        <div className="absolute inset-0 z-0 opacity-[0.03] pointer-events-none overflow-hidden">
-          <svg className="w-full h-full" preserveAspectRatio="none">
-            <path d="M 50%,0 Q 30%,20 40%,50 T 20%,100 M 50%,0 Q 70%,30 60%,60 T 80%,100 M 50%,0 Q 40%,40 50%,80 T 50%,100" fill="none" stroke="white" strokeWidth="2" strokeDasharray="10 20" />
-          </svg>
-        </div>
-
         <div className="relative z-10 max-w-7xl mx-auto px-4">
           
-          {/* THE MAIN ROOT (Clean White/Silver Gradient) */}
-          <div className="absolute top-0 bottom-0 left-6 md:left-1/2 md:-translate-x-1/2 w-4 md:w-8 pointer-events-none z-0 overflow-visible">
-            <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 1000">
-              {/* Faint Dead Root */}
-              <path d="M 50,0 Q 20,250 50,500 T 50,1000" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="4" />
-              
-              {/* Animated Solid White Line based on scroll */}
-              <motion.path
-                d="M 50,0 Q 20,250 50,500 T 50,1000"
-                fill="none"
-                stroke="url(#mainRootGradient)"
-                strokeWidth="4"
-                strokeLinecap="round"
-                style={{ pathLength: smoothProgress }}
-              />
-              <defs>
-                <linearGradient id="mainRootGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="rgba(255,255,255,0.3)" />
-                  <stop offset="50%" stopColor="rgba(255,255,255,0.8)" />
-                  <stop offset="100%" stopColor="rgba(255,255,255,0.3)" />
-                </linearGradient>
-              </defs>
-            </svg>
+          {/* DENSE ROOT NETWORK CONTAINER */}
+          <div className="absolute top-0 bottom-0 left-6 md:left-1/2 md:-translate-x-1/2 w-[100px] md:w-[300px] pointer-events-none z-0">
+            <OrganicRootNetwork progress={smoothProgress} />
           </div>
 
           {/* Render Chapters */}
-          <div className="w-full flex flex-col z-10">
+          <div className="w-full flex flex-col z-10 pt-[10vh]">
             {STORY_DATA.map((event, index) => (
               <ChapterNode key={event.id} event={event} index={index} />
             ))}
