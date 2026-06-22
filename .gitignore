@@ -38,7 +38,7 @@ next-env.d.ts
 # ---------------------------------------------------
 # USER SPECIFIC: IGNORE HEAVY 3D ASSETS & ANIMATIONS
 # ---------------------------------------------------
-public/animations/
+public/animations/boy
 public/models/
 *.fbx
 *.glb
