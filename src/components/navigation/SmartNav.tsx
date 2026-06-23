@@ -14,15 +14,15 @@ const NavItem = ({ href, label, icon: Icon }: { href: string; label: string; ico
       
       {/* Active State Glassmorphism Highlight */}
       {isActive && (
-        <div className="absolute inset-0 bg-cyan-500/15 rounded-xl blur-[6px] transition-all duration-300 pointer-events-none" />
+        <div className="absolute inset-0 bg-amber-400/10 rounded-xl blur-[6px] transition-all duration-300 pointer-events-none" />
       )}
 
       {/* SVG Icon - Size reduced to 18px for a cleaner look */}
       <div 
         className={`relative z-10 transition-all duration-300 
           ${isActive 
-            ? "text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)] scale-110" 
-            : "text-neutral-500 group-hover:text-cyan-300 group-hover:scale-110"
+            ? "text-amber-200 drop-shadow-[0_0_8px_rgba(241,199,137,0.8)] scale-110" 
+            : "text-neutral-500 group-hover:text-amber-100 group-hover:scale-110"
           }`}
       >
         {Icon}
@@ -32,8 +32,8 @@ const NavItem = ({ href, label, icon: Icon }: { href: string; label: string; ico
       <span 
         className={`relative z-10 text-[9px] md:text-[10px] font-mono tracking-widest transition-all duration-300 md:[writing-mode:vertical-lr] md:rotate-180 
           ${isActive 
-            ? "text-cyan-400 font-bold drop-shadow-[0_0_5px_rgba(6,182,212,0.5)]" 
-            : "text-neutral-500 group-hover:text-cyan-300"
+            ? "text-amber-200 font-bold drop-shadow-[0_0_5px_rgba(241,199,137,0.5)]" 
+            : "text-neutral-500 group-hover:text-amber-100"
           }`}
       >
         {label}
@@ -45,7 +45,7 @@ const NavItem = ({ href, label, icon: Icon }: { href: string; label: string; ico
 // Main SmartNav Component
 export function SmartNav() {
   return (
-    <nav className="fixed md:left-6 md:top-1/2 md:-translate-y-1/2 md:translate-x-0 md:flex-col md:h-auto md:w-auto md:bottom-auto bottom-6 left-1/2 -translate-x-1/2 md:py-4 md:px-2 px-4 py-2 z-50 bg-neutral-950/60 backdrop-blur-xl border border-white/10 rounded-full flex flex-row gap-2 shadow-[0_8px_32px_0_rgba(0,0,0,0.6)]">
+    <nav className="fixed md:right-6 md:left-auto md:top-1/2 md:-translate-y-1/2 md:translate-x-0 md:flex-col md:h-auto md:w-auto md:bottom-auto bottom-6 left-1/2 -translate-x-1/2 md:py-4 md:px-2 px-4 py-2 z-50 bg-neutral-950/60 backdrop-blur-xl border border-white/10 rounded-full flex flex-row gap-2 shadow-[0_8px_32px_0_rgba(0,0,0,0.6)]">
       
       <NavItem
         href="/"
