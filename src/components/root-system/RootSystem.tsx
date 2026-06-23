@@ -1,20 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  motion,
-  useMotionValue,
-  useMotionValueEvent,
-  useReducedMotion,
-  useScroll,
-  useTransform,
-} from "framer-motion";
+import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { MainRoot } from "./MainRoot";
 import { Connectors } from "./Connectors";
-import { OriginSpark } from "./OriginSpark";
 import { Particles } from "@/components/ambient/Particles";
 import { buildMain, buildCapillaries, buildConnectors, buildDecoys, type Pt } from "./geometry";
 import type { ChapterModule } from "@/components/chapters";
+
+// Roots begin exactly at the top of the solid-black section (the soil surface).
+const ORIGIN_Y = 0;
 
 type Built = {
   w: number;
@@ -27,18 +22,18 @@ type Built = {
 };
 
 /**
- * Master canvas. Everything grows from the origin heart at (w/2, 0):
- *   Level 1  one snake-walking trunk (pathLength) -- never touches the cards
- *   Level 2  per-chapter branches to DISTINCT points on each box (+ decoys
- *            that grow but never connect); bloom only once in view
- *   Level 3  a dense capillary fan
- * The trunk draws with pathLength; everything else is a static field revealed
- * by ONE scroll mask -> 20 chapters stay smooth. Draw finishes by ~78% scroll.
+ * Master canvas (the dark soil). Solid black to the absolute bottom. All roots
+ * originate exactly at the top black surface (no wave, no divider) and grow
+ * downward with scroll -- no heart symbol, no growing-tip circle.
+ *
+ *   Level 1  snake-walking trunk (pathLength) -- never touches the cards
+ *   Level 2  per-chapter branches to distinct box points (+ non-connecting decoys)
+ *   Level 3  dense capillary fan
+ * Trunk uses pathLength; the rest is a static field revealed by one scroll mask.
  */
 export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
   const sectionRef = useRef<HTMLElement>(null);
   const nodeRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const bloomPathRef = useRef<SVGPathElement>(null);
   const heightRef = useRef(0);
 
   const reduce = useReducedMotion() ?? false;
@@ -47,30 +42,10 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
     offset: ["start start", "end end"],
   });
   const drive = useTransform(scrollYProgress, [0, 0.78], [0, 1], { clamp: true });
+  const revealH = useTransform(drive, (v) => v * heightRef.current);
 
   const [built, setBuilt] = useState<Built | null>(null);
   const [active, setActive] = useState<boolean[]>(() => chapters.map(() => false));
-
-  const revealH = useTransform(drive, (v) => v * heightRef.current);
-
-  const headX = useMotionValue(0);
-  const headY = useMotionValue(0);
-  const headOpacity = useMotionValue(0);
-  const lenRef = useRef(0);
-
-  useEffect(() => {
-    const p = bloomPathRef.current;
-    if (p) lenRef.current = p.getTotalLength();
-  }, [built?.mainPath]);
-
-  useMotionValueEvent(drive, "change", (v) => {
-    const p = bloomPathRef.current;
-    if (!p || !lenRef.current) return;
-    const pt = p.getPointAtLength(Math.min(v, 0.999) * lenRef.current);
-    headX.set(pt.x);
-    headY.set(pt.y);
-    headOpacity.set(v > 0.015 && v < 0.99 ? 1 : 0);
-  });
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -84,9 +59,9 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
       heightRef.current = h;
       const mobile = w < 768;
       const originX = w / 2;
-      const geo = buildMain(originX, w, h, mobile);
-      const { layers } = buildCapillaries(originX, w, h, mobile);
-      const decoys = buildDecoys(originX, w, h, mobile);
+      const geo = buildMain(originX, ORIGIN_Y, w, h, mobile);
+      const { layers } = buildCapillaries(originX, ORIGIN_Y, w, h, mobile);
+      const decoys = buildDecoys(originX, ORIGIN_Y, w, h, mobile);
 
       const connectors = nodeRefs.current.map((el, i) => {
         if (!el) return { paths: [], points: [] as Pt[] };
@@ -98,13 +73,12 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
           : leftCard
           ? nr.right - sr.left - 6
           : nr.left - sr.left + 6;
-        // 3-4 DISTINCT attach points spread down this box's inner edge
         const count = 3 + (i % 2);
         const points: Pt[] = Array.from({ length: count }, (_, k) => ({
           x: innerX,
           y: top + (nr.height * (k + 1)) / (count + 1),
         }));
-        return { paths: buildConnectors(originX, points), points };
+        return { paths: buildConnectors(originX, ORIGIN_Y, points), points };
       });
 
       setBuilt({ w, h, mobile, mainPath: geo.mainPath, capillaries: layers, decoys, connectors });
@@ -152,13 +126,8 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
     <section
       ref={sectionRef}
       className="relative w-full overflow-hidden bg-[var(--bg-void)]"
-      style={{
-        background:
-          "radial-gradient(120% 42% at 50% 0%, rgba(241,199,137,0.05), transparent 55%), var(--bg-void)",
-      }}
     >
       <Particles count={22} />
-      <OriginSpark />
 
       <svg
         className="pointer-events-none absolute inset-0 h-full w-full"
@@ -172,23 +141,16 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
             <stop offset="0%" stopColor="var(--root-idle-from)" />
             <stop offset="100%" stopColor="var(--root-idle-to)" />
           </linearGradient>
-          {/* trunk: dim earthy -> warm, low-key by default */}
           <linearGradient id="rn-trunk" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#4a3d2c" />
             <stop offset="70%" stopColor="#7a5f3a" />
             <stop offset="100%" stopColor="#9c763f" />
           </linearGradient>
-          {/* soft warm Bloom (matches the canopy) */}
           <linearGradient id="rn-bloom" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="var(--bloom-tip)" />
             <stop offset="50%" stopColor="var(--bloom-core)" />
             <stop offset="100%" stopColor="var(--bloom-mid)" />
           </linearGradient>
-          <radialGradient id="rn-head" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#fff6e6" stopOpacity="0.75" />
-            <stop offset="45%" stopColor="var(--bloom-tip)" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="var(--bloom-core)" stopOpacity="0" />
-          </radialGradient>
           <filter id="rn-glow-soft" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="2.4" result="b" />
             <feMerge>
@@ -217,7 +179,6 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
               decoys={built.decoys}
               connectorBases={connectorBases}
               drive={drive}
-              bloomPathRef={bloomPathRef}
               mobile={built.mobile}
               reduce={reduce}
             />
@@ -226,16 +187,6 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
               c.paths.length ? (
                 <Connectors key={i} paths={c.paths} points={c.points} active={!!active[i]} reduce={reduce} />
               ) : null
-            )}
-
-            {!reduce && (
-              <motion.circle
-                r={built.mobile ? 6 : 9}
-                fill="url(#rn-head)"
-                cx={headX}
-                cy={headY}
-                style={{ opacity: headOpacity }}
-              />
             )}
           </>
         )}
