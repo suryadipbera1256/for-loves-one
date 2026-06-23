@@ -2,34 +2,27 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
-import { MainRoot } from "./MainRoot";
+import { MainRoot, type BranchBase } from "./MainRoot";
 import { Connectors } from "./Connectors";
+import { RootCrown } from "./RootCrown";
 import { Particles } from "@/components/ambient/Particles";
-import { buildMain, buildCapillaries, buildConnectors, buildDecoys, type Pt } from "./geometry";
+import { buildTrunk, buildBranches, buildCapillaries, type Branches, type CardBox } from "./geometry";
 import type { ChapterModule } from "@/components/chapters";
 
-// Roots begin exactly at the top of the solid-black section (the soil surface).
-const ORIGIN_Y = 0;
-
-type Built = {
-  w: number;
-  h: number;
-  mobile: boolean;
-  mainPath: string;
-  capillaries: string[];
-  decoys: string[];
-  connectors: { paths: string[]; points: Pt[] }[];
-};
-
 /**
- * Master canvas (the dark soil). Solid black to the absolute bottom. All roots
- * originate exactly at the top black surface (no wave, no divider) and grow
- * downward with scroll -- no heart symbol, no growing-tip circle.
+ * Master canvas (the dark soil). A botanical root ecosystem grows from a textured
+ * Root Crown at the soil surface down into "...to be continued":
  *
- *   Level 1  snake-walking trunk (pathLength) -- never touches the cards
- *   Level 2  per-chapter branches to distinct box points (+ non-connecting decoys)
- *   Level 3  dense capillary fan
- * Trunk uses pathLength; the rest is a static field revealed by one scroll mask.
+ *   Level 1    a tapered trunk that slithers down the centre
+ *   Level 2    4-5 tapered, snaking connectors per chapter -> dock to the box
+ *              (LEFT card -> top + right edge ; RIGHT card -> top + left edge)
+ *   Level 2.5  tiny non-connecting rootlets sprouting off the connectors
+ *   Level 3    a dense, dim capillary background that never connects
+ *
+ * GROWTH IS STRICTLY 1:1 WITH SCROLL. `drive` is a direct, non-spring transform
+ * of scrollYProgress, and the reveal mask height is drive * sectionHeight. Pause
+ * scrolling and growth freezes on the exact frame. A chapter blooms (and its card
+ * lights) ONLY when the reveal has physically reached its docking points.
  */
 export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
   const sectionRef = useRef<HTMLElement>(null);
@@ -41,11 +34,23 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
     target: sectionRef,
     offset: ["start start", "end end"],
   });
-  const drive = useTransform(scrollYProgress, [0, 0.78], [0, 1], { clamp: true });
+  // Direct mapping -> no spring, no duration: 1:1 with scroll, freezes on pause.
+  const drive = useTransform(scrollYProgress, [0, 0.85], [0, 1], { clamp: true });
   const revealH = useTransform(drive, (v) => v * heightRef.current);
 
+  type Built = {
+    w: number;
+    h: number;
+    mobile: boolean;
+    trunkFill: string;
+    trunkCore: string;
+    capillaries: string[];
+    branches: Branches[];
+    connectAt: number[]; // scroll-drive value at which each chapter connects
+  };
+
   const [built, setBuilt] = useState<Built | null>(null);
-  const [active, setActive] = useState<boolean[]>(() => chapters.map(() => false));
+  const [connected, setConnected] = useState<boolean[]>(() => chapters.map(() => false));
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -59,29 +64,47 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
       heightRef.current = h;
       const mobile = w < 768;
       const originX = w / 2;
-      const geo = buildMain(originX, ORIGIN_Y, w, h, mobile);
-      const { layers } = buildCapillaries(originX, ORIGIN_Y, w, h, mobile);
-      const decoys = buildDecoys(originX, ORIGIN_Y, w, h, mobile);
 
-      const connectors = nodeRefs.current.map((el, i) => {
-        if (!el) return { paths: [], points: [] as Pt[] };
+      const trunk = buildTrunk(originX, w, h, mobile);
+      const { layers } = buildCapillaries(originX, w, h, mobile);
+
+      const branches: Branches[] = [];
+      const connectAt: number[] = [];
+      nodeRefs.current.forEach((el, i) => {
+        if (!el) {
+          branches[i] = { ribbons: [], cores: [], points: [], subBranches: [] };
+          connectAt[i] = 1;
+          return;
+        }
         const nr = el.getBoundingClientRect();
         const top = nr.top - sr.top + section.scrollTop;
-        const leftCard = !mobile && i % 2 === 0;
-        const innerX = mobile
-          ? nr.left - sr.left + 6
-          : leftCard
-          ? nr.right - sr.left - 6
-          : nr.left - sr.left + 6;
-        const count = 3 + (i % 2);
-        const points: Pt[] = Array.from({ length: count }, (_, k) => ({
-          x: innerX,
-          y: top + (nr.height * (k + 1)) / (count + 1),
-        }));
-        return { paths: buildConnectors(originX, ORIGIN_Y, points), points };
+        const leftEdge = nr.left - sr.left;
+        const rightEdge = nr.right - sr.left;
+        const side: "left" | "right" = !mobile && i % 2 === 0 ? "left" : "right";
+        const card: CardBox = {
+          topY: top,
+          height: nr.height,
+          innerX: side === "left" ? rightEdge - 4 : leftEdge + 4,
+          centerX: (leftEdge + rightEdge) / 2,
+          side,
+        };
+        const b = buildBranches(trunk, card, i, mobile);
+        branches[i] = b;
+        const maxDockY = b.points.reduce((m, p) => Math.max(m, p.y), top);
+        // revealH = drive * h, so the reveal reaches this chapter when drive >= maxDockY/h.
+        connectAt[i] = Math.min(1, maxDockY / h);
       });
 
-      setBuilt({ w, h, mobile, mainPath: geo.mainPath, capillaries: layers, decoys, connectors });
+      setBuilt({
+        w,
+        h,
+        mobile,
+        trunkFill: trunk.fillPath,
+        trunkCore: trunk.corePath,
+        capillaries: layers,
+        branches,
+        connectAt,
+      });
     };
 
     measure();
@@ -96,38 +119,42 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
     };
   }, [chapters.length]);
 
+  // Bloom strictly on physical connection: connected[i] = drive >= connectAt[i].
   useEffect(() => {
-    const observers = nodeRefs.current.map((el, i) => {
-      if (!el) return null;
-      const o = new IntersectionObserver(
-        ([entry]) =>
-          setActive((prev) => {
-            const on = entry.isIntersecting && entry.intersectionRatio >= 0.4;
-            if (prev[i] === on) return prev;
-            const next = [...prev];
+    if (!built) return;
+    const evaluate = (v: number) => {
+      setConnected((prev) => {
+        let changed = false;
+        const next = prev.length === built.connectAt.length ? prev.slice() : built.connectAt.map(() => false);
+        for (let i = 0; i < built.connectAt.length; i++) {
+          const on = v >= built.connectAt[i];
+          if (next[i] !== on) {
             next[i] = on;
-            return next;
-          }),
-        { threshold: [0, 0.4, 0.6, 1], rootMargin: "-8% 0px -8% 0px" }
-      );
-      o.observe(el);
-      return o;
-    });
-    return () => observers.forEach((o) => o?.disconnect());
-  }, [chapters.length]);
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    };
+    evaluate(drive.get());
+    const unsub = drive.on("change", evaluate);
+    return unsub;
+  }, [built, drive]);
 
   const viewBox = useMemo(() => (built ? `0 0 ${built.w} ${built.h}` : "0 0 100 100"), [built]);
-  const connectorBases = useMemo(
-    () => (built ? built.connectors.flatMap((c) => c.paths) : []),
+  const connectorRibbons = useMemo<BranchBase[]>(
+    () => (built ? built.branches.flatMap((b) => b.ribbons.map((d) => ({ d }))) : []),
+    [built]
+  );
+  const subBranches = useMemo<BranchBase[]>(
+    () => (built ? built.branches.flatMap((b) => b.subBranches.map((d) => ({ d }))) : []),
     [built]
   );
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative w-full overflow-hidden bg-[var(--bg-void)]"
-    >
+    <section ref={sectionRef} className="relative w-full overflow-hidden bg-[var(--bg-void)]">
       <Particles count={22} />
+      {built && <RootCrown mobile={built.mobile} />}
 
       <svg
         className="pointer-events-none absolute inset-0 h-full w-full"
@@ -137,15 +164,23 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
         shapeRendering="optimizeSpeed"
       >
         <defs>
+          {/* dim idle (default unlit roots) */}
           <linearGradient id="rn-idle" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--root-idle-from)" />
             <stop offset="100%" stopColor="var(--root-idle-to)" />
           </linearGradient>
+          {/* darker, for the ambient capillary network + rootlets */}
+          <linearGradient id="rn-cap" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#241d14" />
+            <stop offset="100%" stopColor="#352a1d" />
+          </linearGradient>
+          {/* woody trunk body */}
           <linearGradient id="rn-trunk" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#4a3d2c" />
-            <stop offset="70%" stopColor="#7a5f3a" />
+            <stop offset="65%" stopColor="#7a5f3a" />
             <stop offset="100%" stopColor="#9c763f" />
           </linearGradient>
+          {/* the warm Bloom -- only connected Level 2 roots use this */}
           <linearGradient id="rn-bloom" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="var(--bloom-tip)" />
             <stop offset="50%" stopColor="var(--bloom-core)" />
@@ -161,9 +196,10 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
           <filter id="rn-soft-blur" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="1.1" />
           </filter>
+          {/* feathered tip so the scroll-reveal edge isn't a hard line */}
           <linearGradient id="rn-feather" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="88%" stopColor="#ffffff" />
+            <stop offset="90%" stopColor="#ffffff" />
             <stop offset="100%" stopColor="#000000" />
           </linearGradient>
           <mask id="rn-reveal" maskUnits="userSpaceOnUse">
@@ -174,18 +210,19 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
         {built && (
           <>
             <MainRoot
-              mainPath={built.mainPath}
+              trunkFill={built.trunkFill}
+              trunkCore={built.trunkCore}
               capillaries={built.capillaries}
-              decoys={built.decoys}
-              connectorBases={connectorBases}
+              connectorRibbons={connectorRibbons}
+              subBranches={subBranches}
               drive={drive}
               mobile={built.mobile}
               reduce={reduce}
             />
 
-            {built.connectors.map((c, i) =>
-              c.paths.length ? (
-                <Connectors key={i} paths={c.paths} points={c.points} active={!!active[i]} reduce={reduce} />
+            {built.branches.map((b, i) =>
+              b.ribbons.length ? (
+                <Connectors key={i} ribbons={b.ribbons} points={b.points} connected={!!connected[i]} reduce={reduce} />
               ) : null
             )}
           </>
@@ -208,7 +245,8 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
                 }}
                 className="w-[80%] md:w-[44%]"
               >
-                <Comp active={!!active[i]} side={leftCard ? "left" : "right"} />
+                {/* card blooms exactly when its roots connect */}
+                <Comp active={!!connected[i]} side={leftCard ? "left" : "right"} />
               </div>
             </div>
           );
