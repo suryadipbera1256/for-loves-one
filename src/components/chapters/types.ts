@@ -8,6 +8,18 @@ export interface ChapterContent {
   body: string;
   meta: string;
   image?: string;
+  /**
+   * Up to 3 photos for the triple-photo array. Missing/failed photos fall back
+   * to the accent gradient, so the array always looks intentional. If omitted,
+   * `image` is used for all three frames.
+   */
+  images?: string[];
+  /**
+   * Long-form "Moral of the Story" narrative (any length) shown on the flip
+   * side, in English and Bengali. Paragraphs split on blank lines. Falls back
+   * to `body` when absent.
+   */
+  story?: { en: string; bn: string };
   /** [from, to] raw CSS colors for the graceful gradient fallback. */
   accent: [string, string];
 }

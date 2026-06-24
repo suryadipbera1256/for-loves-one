@@ -27,13 +27,13 @@ function ConnectorsImpl({
     <g>
       {ribbons.map((d, i) => (
         <g key={i}>
-          {/* soft radiant halo under the connected root */}
+          {/* tight, contained ambient halo under the connected root (sharp, not hazy) */}
           <motion.path
             d={d}
             fill="url(#rn-bloom)"
             filter="url(#rn-glow-soft)"
             initial={false}
-            animate={{ opacity: connected ? 0.5 : 0 }}
+            animate={{ opacity: connected ? 0.22 : 0 }}
             transition={{ duration: reduce ? 0 : 0.5, ease: "easeOut" }}
           />
           {/* crisp bloom fill */}
@@ -53,7 +53,7 @@ function ConnectorsImpl({
           key={`n${i}`}
           cx={p.x}
           cy={p.y}
-          r={3}
+          r={2.4}
           fill="var(--bloom-tip)"
           filter="url(#rn-glow-soft)"
           style={{ transformBox: "fill-box", transformOrigin: "center" }}

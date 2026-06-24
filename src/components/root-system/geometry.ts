@@ -146,7 +146,9 @@ export function buildTrunk(originX: number, w: number, h: number, mobile: boolea
     );
   };
 
-  const topHW = mobile ? 9 : 15;
+  // Thick, heavy and mature at the crown, tapering to a thread at the floor --
+  // a real main root. (Half-widths: full stroke is ~2x these.)
+  const topHW = mobile ? 15 : 26;
   const botHW = mobile ? 1 : 1.6;
 
   const step = Math.max(12, h / 140);
@@ -197,7 +199,9 @@ export function buildBranches(trunk: Trunk, card: CardBox, index: number, mobile
   const points: Pt[] = [];
   for (let k = 0; k < onTop; k++) {
     const frac = (k + 1) / (onTop + 1);
-    points.push({ x: lerp(card.innerX, card.centerX, frac * 0.78), y: card.topY + 1 });
+    // On mobile the trunk runs down a left rail, so keep top docks near the
+    // inner edge (less reach across the card) for clean, fully-visible roots.
+    points.push({ x: lerp(card.innerX, card.centerX, frac * (mobile ? 0.45 : 0.92)), y: card.topY + 1 });
   }
   for (let k = 0; k < onEdge; k++) {
     const frac = (k + 1) / (onEdge + 1);
@@ -208,14 +212,15 @@ export function buildBranches(trunk: Trunk, card: CardBox, index: number, mobile
   const cores: string[] = [];
   const subBranches: string[] = [];
 
-  const hw0 = mobile ? 3.4 : 5; // thick where it leaves the trunk cluster
-  const hw1 = mobile ? 0.8 : 1.1; // thin where it docks
+  const hw0 = mobile ? 4 : 7; // medium where it splits off the trunk
+  const hw1 = mobile ? 0.35 : 0.5; // fine tip exactly at the chapter
 
   points.forEach((end, k) => {
     const rng = makeRng(Math.round(end.x) * 13 + Math.round(end.y) * 7 + index * 131 + k * 17 + 5);
     // each connector grafts from a slightly different spot in the cluster
-    const start: Pt = { x: junctionX + (k - (count - 1) / 2) * (mobile ? 3 : 5), y: junctionY };
-    const span = mobile ? 26 : 46;
+    const start: Pt = { x: junctionX + (k - (count - 1) / 2) * (mobile ? 4 : 9), y: junctionY };
+    // gentler horizontal swing on mobile so connectors stay inside the narrow viewport
+    const span = mobile ? 26 : 66;
     const segs = 3 + Math.floor(rng() * 2);
     const way: Pt[] = [start];
     for (let s = 1; s < segs; s++) {
@@ -228,7 +233,7 @@ export function buildBranches(trunk: Trunk, card: CardBox, index: number, mobile
     way.push(end);
 
     const dense = catmullPoints(way, 16);
-    ribbons.push(ribbonFromCenterline(dense, hw0, hw1, 0.85));
+    ribbons.push(ribbonFromCenterline(dense, hw0, hw1, 0.9));
     cores.push(smoothPath(way));
 
     // Level 2.5: sprout 1-2 rootlets partway along this connector
@@ -237,7 +242,7 @@ export function buildBranches(trunk: Trunk, card: CardBox, index: number, mobile
       const at = Math.floor(dense.length * (0.35 + rng() * 0.4));
       const base = dense[Math.min(at, dense.length - 1)];
       const dir = rng() < 0.5 ? -1 : 1;
-      const rlen = mobile ? 34 + rng() * 26 : 54 + rng() * 50;
+      const rlen = mobile ? 46 + rng() * 32 : 72 + rng() * 64;
       const rseg = 2 + Math.floor(rng() * 2);
       const rway: Pt[] = [base];
       let a = (rng() - 0.5) * 0.8 + (dir > 0 ? 0.5 : Math.PI - 0.5); // out & slightly down
@@ -249,7 +254,7 @@ export function buildBranches(trunk: Trunk, card: CardBox, index: number, mobile
         cy += Math.abs(Math.sin(a)) * (rlen / rseg) + (rlen / rseg) * 0.25; // bias downward into soil
         rway.push({ x: cx, y: cy });
       }
-      subBranches.push(ribbonFromCenterline(catmullPoints(rway, 10), mobile ? 1.4 : 1.9, 0.15, 0.7));
+      subBranches.push(ribbonFromCenterline(catmullPoints(rway, 10), mobile ? 2 : 2.7, 0.2, 0.7));
     }
   });
 
@@ -271,7 +276,9 @@ export function buildCapillaries(
   const buckets: string[][] = Array.from({ length: LAYERS }, () => []);
   let segments = 0;
 
-  const maxDepth = mobile ? 5 : 6;
+  // Kept deliberately shallow + sparse: Level 3 is a faint ambient depth haze,
+  // not a dense web -- so the glowing Level 1 / Level 2 roots stay the heroes.
+  const maxDepth = mobile ? 2 : 3;
   const grow = (
     x: number,
     y: number,
@@ -298,19 +305,31 @@ export function buildCapillaries(
       cx = nx;
       cy = ny;
       segments++;
-      if (rng() < 0.7) {
-        grow(cx, cy, a + (rng() < 0.5 ? -1 : 1) * (0.45 + rng() * 0.6), len * 0.66, depth + 1, layer, spread * 1.06);
+      // sparse, occasional forking only
+      if (depth < maxDepth && rng() < 0.32) {
+        grow(cx, cy, a + (rng() < 0.5 ? -1 : 1) * (0.45 + rng() * 0.6), len * 0.62, depth + 1, layer, spread * 1.06);
       }
     }
     buckets[layer].push(d);
   };
 
-  const strands = mobile ? 28 : 50;
+  // Sparse network spread EVENLY across the entire width (left, centre, right).
+  // Few strands, evenly-slotted then jittered, so the haze is balanced and calm.
+  const strands = mobile ? 9 : 16;
+  const slotW = w / strands;
+  const slots = Array.from({ length: strands }, (_, i) => (i + 0.5) * slotW);
+  for (let i = slots.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = slots[i];
+    slots[i] = slots[j];
+    slots[j] = tmp;
+  }
   for (let i = 0; i < strands; i++) {
-    const sx = ((i + 0.5) / strands) * w + (rng() - 0.5) * 24;
-    const sy = rng() * h * 0.08;
+    const sx = slots[i] + (rng() - 0.5) * slotW; // jitter within its slot -> even but organic
+    const sy = rng() * h * 0.14;
+    // symmetric horizontal launch so strands fan both ways equally
     const baseAng = (rng() - 0.5) * Math.PI;
-    grow(sx, sy, baseAng, (mobile ? 60 : 92) + rng() * 70, 0, i % LAYERS, 0.7);
+    grow(sx, sy, baseAng, (mobile ? 80 : 120) + rng() * 90, 0, i % LAYERS, 0.74);
   }
 
   return { layers: buckets.map((b) => b.join(" ")), segments };

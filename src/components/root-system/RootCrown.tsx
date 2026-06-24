@@ -3,34 +3,37 @@
 import { motion, useReducedMotion } from "framer-motion";
 
 /**
- * The Root Crown -- a realistic, textured tree-stump base sitting exactly on the
- * soil line where the dark background begins. The whole trunk grows out of it.
+ * The Root Crown -- a realistic, textured tree-stump base the whole root system
+ * grows out of. Purely botanical: layered wood lobes, buttress roots flaring into
+ * the soil, bark striations and heartwood rings. No glow, no icon.
  *
- * Rendered as its own fixed-aspect SVG (the main canvas uses
- * preserveAspectRatio="none", which would distort fine bark detail), centred and
- * straddling the surface. Purely botanical: layered wood lobes, buttress roots
- * flaring into the soil, bark striations and heartwood rings -- no glow, no icon.
+ * Permanent, very slow ambient "breath": the crown swells a hair and its shadow
+ * deepens, so the wood feels alive without ever looking neon.
  *
- * It has a permanent, very slow ambient "breath": the crown swells a hair and its
- * shadow deepens, so the wood feels alive without ever looking neon.
+ * `variant`:
+ *   "hero" -> planted in the dark band at the bottom of the Hero (Phase 1),
+ *             behind the couple (z below the couple), as a background layer.
+ *   "soil" -> sat on the soil line at the top of the root section.
+ * Rendered as its own fixed-aspect SVG (the root canvas uses
+ * preserveAspectRatio="none", which would distort fine bark detail) and sized
+ * with CSS so no measurement is needed.
  */
-export function RootCrown({ mobile }: { mobile: boolean }) {
+export function RootCrown({ variant = "soil" }: { variant?: "hero" | "soil" }) {
   const reduce = useReducedMotion() ?? false;
-  const W = mobile ? 150 : 230;
-  const H = mobile ? 86 : 124;
+
+  const wrap =
+    variant === "hero"
+      ? "pointer-events-none absolute bottom-0 left-1/2 z-[15] w-[150px] -translate-x-1/2 translate-y-[16%] md:w-[230px]"
+      : "pointer-events-none absolute left-1/2 top-0 z-20 w-[150px] -translate-x-1/2 -translate-y-[38%] md:w-[230px]";
 
   return (
-    <div
-      className="pointer-events-none absolute left-1/2 top-0 z-20 -translate-x-1/2"
-      style={{ marginTop: mobile ? -34 : -48 }}
-      aria-hidden
-    >
+    <div className={wrap} aria-hidden>
       <motion.svg
-        width={W}
-        height={H}
         viewBox="0 0 230 124"
+        width="100%"
+        height="auto"
         fill="none"
-        style={{ transformOrigin: "115px 118px", display: "block" }}
+        style={{ transformOrigin: "50% 92%", display: "block" }}
         animate={reduce ? undefined : { scaleX: [1, 1.012, 1], scaleY: [1, 0.99, 1] }}
         transition={{ duration: 7.5, repeat: Infinity, ease: "easeInOut" }}
       >

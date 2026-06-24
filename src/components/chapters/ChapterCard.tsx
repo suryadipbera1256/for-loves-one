@@ -1,24 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import {
-  motion,
-  useMotionValue,
-  useSpring,
-  useTransform,
-  useReducedMotion,
-} from "framer-motion";
-import { cardContainer, cardChild, UI_SPRING } from "@/lib/motion";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { SOFT_SPRING } from "@/lib/motion";
 import type { ChapterContent } from "./types";
+import { PhotoArray } from "./card/PhotoArray";
+import { GalleryButton } from "./card/GalleryButton";
+import { StoryBack } from "./card/StoryBack";
 
 /**
- * Shared, optimized glassmorphism card primitive used by every chapter module.
- * - backdrop-blur glass with a 1px gradient-highlight border
- * - cursor-follow 3D tilt (desktop, +/-6deg), springy
- * - staggered inner reveal: kicker -> title -> divider -> body -> meta
- * - cyan "Neon Bloom" active state (kept subtle), driven by `active`
- * - graceful gradient fallback when the photo is missing
+ * The premium Chapter node -- a 3D glass FLIP card, harmonised with the
+ * subterranean root theme.
+ *
+ *   FRONT  triple-photo array (holographic 3D-tilt) + title + actions
+ *   BACK   the "Story Vault": a scrollable long-form narrative
+ *
+ * "Read Story" flips the whole card in 3D; the back scrolls internally so the
+ * card's footprint never grows. Glassmorphism throughout, and the whole card
+ * blooms warm when `active` (the roots have physically connected to it).
+ *
+ * Contract preserved exactly: `{ chapter, active, side }`. The card keeps a
+ * fixed height so the RootSystem's measured docking points stay stable.
  */
 export function ChapterCard({
   chapter,
@@ -29,144 +32,141 @@ export function ChapterCard({
   active: boolean;
   side: "left" | "right";
 }) {
-  const reduce = useReducedMotion();
-  const [imgFailed, setImgFailed] = useState(false);
-  const [a, b] = chapter.accent;
+  const [flipped, setFlipped] = useState(false);
 
-  const mx = useMotionValue(0);
-  const my = useMotionValue(0);
-  const rotateX = useSpring(useTransform(my, [-0.5, 0.5], [6, -6]), UI_SPRING);
-  const rotateY = useSpring(useTransform(mx, [-0.5, 0.5], [-6, 6]), UI_SPRING);
+  // shared glass + bloom skin for both faces
+  const face = (extra?: string) =>
+    cn(
+      // sharper, lighter blur on mobile (razor-sharp on high-DPI + faster); richer on desktop
+      "absolute inset-0 overflow-hidden rounded-[1.75rem] border bg-white/[0.05] backdrop-blur-xl md:backdrop-blur-2xl",
+      "transition-[box-shadow,border-color,background-color] duration-700 ease-out",
+      "[backface-visibility:hidden] [transform:translateZ(0)]",
+      active
+        ? "border-[var(--bloom-core)]/45 bg-white/[0.07] shadow-[0_0_14px_-9px_var(--bloom-halo)]"
+        : "border-white/10 shadow-[0_22px_60px_-32px_rgba(0,0,0,0.9)]",
+      extra
+    );
 
-  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (reduce) return;
-    const r = e.currentTarget.getBoundingClientRect();
-    mx.set((e.clientX - r.left) / r.width - 0.5);
-    my.set((e.clientY - r.top) / r.height - 0.5);
-  };
-  const onLeave = () => {
-    mx.set(0);
-    my.set(0);
-  };
+  // glassy overlays shared by both faces (sheen + hairline + bloom wash)
+  const Overlays = (
+    <>
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-60"
+        style={{
+          background:
+            "linear-gradient(120deg, rgba(255,255,255,0.10) 0%, transparent 26%, transparent 72%, rgba(255,255,255,0.04) 100%)",
+        }}
+      />
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent to-transparent transition-opacity duration-700",
+          active ? "via-[var(--bloom-tip)] opacity-90" : "via-white/40 opacity-30"
+        )}
+      />
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute inset-0 transition-opacity duration-700",
+          active ? "opacity-100" : "opacity-0"
+        )}
+        style={{ background: "linear-gradient(150deg, rgba(241,199,137,0.10), transparent 60%)" }}
+      />
+    </>
+  );
 
   return (
-    <div style={{ perspective: 1000 }} className="[transform-style:preserve-3d]">
-      <motion.article
-        variants={cardContainer}
-        initial="hidden"
-        whileInView="show"
-        viewport={{ once: true, amount: 0.4 }}
-        onMouseMove={onMove}
-        onMouseLeave={onLeave}
-        whileHover={reduce ? undefined : { scale: 1.02 }}
-        style={reduce ? undefined : { rotateX, rotateY, transformStyle: "preserve-3d" }}
-        tabIndex={0}
+    <motion.div
+      initial={{ opacity: 0, y: 44, filter: "blur(8px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={SOFT_SPRING}
+      style={{ perspective: 1800 }}
+    >
+      <motion.div
+        className="relative h-[32rem] w-full will-change-transform [transform-style:preserve-3d] md:h-[33rem]"
+        animate={{ rotateY: flipped ? 180 : 0 }}
+        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
         aria-label={`Chapter ${chapter.id}: ${chapter.title}`}
-        className={`group relative overflow-hidden rounded-[1.6rem] border bg-white/[0.05] backdrop-blur-xl outline-none
-          transition-[box-shadow,border-color,background-color] duration-700 ease-out
-          focus-visible:ring-2 focus-visible:ring-[var(--bloom-tip)]
-          ${
-            active
-              ? "border-[var(--bloom-core)]/30 bg-white/[0.07] shadow-[0_0_22px_-12px_var(--bloom-halo)]"
-              : "border-white/10 shadow-[0_14px_44px_-34px_rgba(0,0,0,0.85)]"
-          }`}
       >
-        {/* specular sheen */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-60"
-          style={{
-            background:
-              "linear-gradient(120deg, rgba(255,255,255,0.10) 0%, transparent 28%, transparent 70%, rgba(255,255,255,0.04) 100%)",
-          }}
-        />
-        {/* top hairline highlight */}
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent to-transparent transition-opacity duration-700 ${
-            active ? "via-[var(--bloom-tip)] opacity-90" : "via-white/40 opacity-30"
-          }`}
-        />
-        {/* active inner bloom wash (cyan, subtle) */}
-        <div
-          aria-hidden
-          className={`pointer-events-none absolute inset-0 transition-opacity duration-700 ${active ? "opacity-100" : "opacity-0"}`}
-          style={{ background: "linear-gradient(135deg, rgba(241,199,137,0.10), transparent 62%)" }}
-        />
+        {/* ---------------- FRONT ---------------- */}
+        <div className={face(flipped ? "pointer-events-none" : "")}>
+          {Overlays}
+          <div className="relative flex h-full flex-col p-4 md:p-5">
+            {/* eyebrow */}
+            <div className="mb-3 flex items-center justify-between">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] transition-all duration-700",
+                  active
+                    ? "bg-[var(--bloom-tip)] font-bold text-[#2a1d08] shadow-[0_0_6px_-1px_rgba(241,199,137,0.3)]"
+                    : "border border-white/10 bg-black/40 text-[var(--text-lo)]"
+                )}
+              >
+                {chapter.id} · {chapter.kicker}
+              </span>
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full transition-all duration-700",
+                  active ? "bg-[var(--bloom-tip)] shadow-[0_0_4px_rgba(241,199,137,0.35)]" : "bg-white/20"
+                )}
+              />
+            </div>
 
-        {/* media */}
-        <div className="relative m-2 mb-0 h-56 overflow-hidden rounded-[1.2rem] md:h-64">
-          <div
-            aria-hidden
-            className="absolute inset-0"
-            style={{ background: `linear-gradient(135deg, ${a} 0%, ${b} 100%)` }}
-          >
-            <div className="absolute inset-0 opacity-30 [background:radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.25),transparent_45%)]" />
-          </div>
-          {chapter.image && !imgFailed && (
-            <Image
-              src={chapter.image}
-              alt={chapter.title}
-              fill
-              loading="lazy"
-              onError={() => setImgFailed(true)}
-              sizes="(max-width: 768px) 90vw, 45vw"
-              className={`object-cover transition-transform duration-[1200ms] ease-out ${active ? "scale-105" : "scale-100"}`}
-            />
-          )}
-          <div
-            className={`absolute inset-0 transition-colors duration-700 ${
-              active
-                ? "bg-gradient-to-t from-black/90 via-black/25 to-transparent"
-                : "bg-gradient-to-t from-black/85 via-black/45 to-black/10"
-            }`}
-          />
-          <motion.div variants={cardChild} className="absolute inset-x-5 bottom-5">
-            <span
-              className={`mb-2 inline-block rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-all duration-700 ${
-                active
-                  ? "bg-[var(--bloom-tip)] font-bold text-[#2a1d08] shadow-[0_0_10px_rgba(241,199,137,0.45)]"
-                  : "border border-white/10 bg-black/50 text-[var(--text-lo)]"
-              }`}
-            >
-              Chapter {chapter.id} / {chapter.kicker}
-            </span>
-            <motion.h3
-              variants={cardChild}
-              className={`font-handwriting text-3xl leading-tight tracking-wide transition-colors duration-700 md:text-4xl ${
-                active ? "text-white drop-shadow-[0_0_8px_rgba(241,199,137,0.40)]" : "text-[var(--text-hi)]"
-              }`}
+            {/* triple-photo array */}
+            <PhotoArray chapter={chapter} side={side} active={active} />
+
+            {/* title + teaser */}
+            <h3
+              className={cn(
+                "mt-4 font-handwriting text-3xl leading-tight tracking-wide transition-colors duration-700 md:text-4xl",
+                active ? "text-white drop-shadow-[0_0_4px_rgba(241,199,137,0.3)]" : "text-[var(--text-hi)]"
+              )}
             >
               {chapter.title}
-            </motion.h3>
-          </motion.div>
+            </h3>
+            <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-[var(--text-lo)] md:text-sm">
+              {chapter.body}
+            </p>
+
+            {/* actions pinned to the bottom -- stacked + full-width on mobile for easy taps */}
+            <div className="mt-auto flex flex-col gap-2.5 pt-4 md:flex-row md:items-center md:justify-between md:gap-3">
+              <button
+                type="button"
+                onClick={() => setFlipped(true)}
+                aria-label="Read the full story"
+                className={cn(
+                  "group/read inline-flex w-full items-center justify-center gap-2 rounded-full px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.18em] outline-none transition-all duration-500 focus-visible:ring-2 focus-visible:ring-[var(--bloom-tip)] md:w-auto md:justify-start md:py-2",
+                  active
+                    ? "bg-[var(--bloom-core)] text-[#2a1d08] shadow-[0_0_9px_-5px_var(--bloom-halo)] hover:brightness-110"
+                    : "bg-white/10 text-[var(--text-hi)] hover:bg-white/15"
+                )}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5A1.5 1.5 0 0 0 20 18.5z"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                Read Story
+              </button>
+
+              <GalleryButton chapterId={chapter.id} active={active} />
+            </div>
+          </div>
         </div>
 
-        {/* body */}
-        <div className="px-6 pb-6 pt-4">
-          <motion.div
-            variants={cardChild}
-            className={`mb-3 h-px w-full transition-colors duration-700 ${active ? "bg-[var(--bloom-core)]/40" : "bg-white/10"}`}
-          />
-          <motion.p
-            variants={cardChild}
-            className={`text-sm leading-relaxed transition-colors duration-700 md:text-[15px] ${active ? "text-[var(--text-hi)]" : "text-[var(--text-lo)]"}`}
-          >
-            {chapter.body}
-          </motion.p>
-          <motion.div variants={cardChild} className="mt-4 flex items-center gap-2">
-            <span
-              className={`h-1.5 w-1.5 rounded-full transition-all duration-700 ${active ? "bg-[var(--bloom-tip)] shadow-[0_0_8px_rgba(241,199,137,0.45)]" : "bg-white/20"}`}
-            />
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-lo)]">
-              {chapter.meta}
-            </span>
-            <span className="ml-auto font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--text-lo)]/60">
-              {side}
-            </span>
-          </motion.div>
+        {/* ---------------- BACK ---------------- */}
+        <div className={face("[transform:rotateY(180deg)]" + (flipped ? "" : " pointer-events-none"))}>
+          {Overlays}
+          <div className="relative h-full">
+            <StoryBack chapter={chapter} active={active} onBack={() => setFlipped(false)} />
+          </div>
         </div>
-      </motion.article>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
