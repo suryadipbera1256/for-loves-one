@@ -44,6 +44,11 @@ const NavItem = ({ href, label, icon: Icon }: { href: string; label: string; ico
 
 // Main SmartNav Component
 export function SmartNav() {
+  const pathname = usePathname();
+  // Hide the floating public nav inside the Admin dashboard (it has its own
+  // chrome). Public routes are completely unaffected.
+  if (pathname?.startsWith("/admin")) return null;
+
   return (
     <nav className="fixed md:right-6 md:left-auto md:top-1/2 md:-translate-y-1/2 md:translate-x-0 md:flex-col md:h-auto md:w-auto md:bottom-auto bottom-6 left-1/2 -translate-x-1/2 md:py-4 md:px-2 px-4 py-2 z-50 bg-neutral-950/60 backdrop-blur-xl border border-white/10 rounded-full flex flex-row gap-2 shadow-[0_8px_32px_0_rgba(0,0,0,0.6)]">
       

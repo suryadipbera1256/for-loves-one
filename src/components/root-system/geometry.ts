@@ -165,6 +165,115 @@ export function buildTrunk(originX: number, w: number, h: number, mobile: boolea
 }
 
 /* ----------------------------------------------------------------------------
+ * DYNAMIC TRUNK SYSTEM -- scales to any chapter count
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Beyond this many chapters a single trunk would have to taper toward nothing to
+ * serve them all, so we spawn a major sub-trunk to share the load. Tuned so the
+ * current roadmap (<= this) is byte-for-byte the existing single trunk.
+ */
+export const MAX_CHAPTERS_PER_TRUNK = 22;
+/** Chapters each trunk comfortably serves once we've decided to split. */
+const TRUNK_BLOCK = 14;
+/** Hard minimum half-width: a trunk never tapers below this (stays visible). */
+const MIN_HALF_WIDTH = 1.6;
+
+export type TrunkSegment = {
+  id: string;
+  fillPath: string;
+  corePath: string;
+  xAt: (y: number) => number;
+  /** Inclusive-exclusive chapter index range this trunk feeds. */
+  serves: [number, number];
+};
+
+/** Build a filled+core trunk ribbon from an arbitrary centre-line function. */
+function ribbonFromXAt(
+  xAt: (y: number) => number,
+  yStart: number,
+  yEnd: number,
+  hw0: number,
+  hw1: number,
+  pow: number
+): { fillPath: string; corePath: string } {
+  const span = Math.max(1, yEnd - yStart);
+  const step = Math.max(12, span / 120);
+  const center: Pt[] = [];
+  for (let y = yStart; y <= yEnd; y += step) center.push({ x: xAt(y), y });
+  if (center[center.length - 1].y < yEnd) center.push({ x: xAt(yEnd), y: yEnd });
+  return { fillPath: ribbonFromCenterline(center, hw0, hw1, pow), corePath: smoothPath(center) };
+}
+
+/**
+ * The dynamic root engine. Returns one trunk for normal counts (identical to the
+ * existing single trunk) and, once the count exceeds the threshold on desktop,
+ * a primary trunk plus one or more sub-trunks that branch off it, slither out to
+ * one side and take over the overflow chapters -- each tapering to a visible
+ * floor (never invisible). Mobile keeps a single floored left-rail trunk.
+ *
+ * @returns `trunks` to render and `trunkForIndex(i)` to pick which trunk a given
+ *          chapter grafts its connectors from.
+ */
+export function buildTrunkSystem(
+  originX: number,
+  count: number,
+  w: number,
+  h: number,
+  mobile: boolean
+): { trunks: TrunkSegment[]; trunkForIndex: (i: number) => TrunkSegment } {
+  const n = Math.max(1, Math.floor(count));
+
+  // Single trunk (current behaviour) — small counts, or always on mobile.
+  if (mobile || n <= MAX_CHAPTERS_PER_TRUNK) {
+    const t = buildTrunk(originX, w, h, mobile);
+    const seg: TrunkSegment = { id: "trunk-0", fillPath: t.fillPath, corePath: t.corePath, xAt: t.xAt, serves: [0, n] };
+    return { trunks: [seg], trunkForIndex: () => seg };
+  }
+
+  // Overflow → primary trunk + sub-trunk(s).
+  const k = Math.ceil(n / TRUNK_BLOCK);
+  const block = Math.ceil(n / k);
+  const amp = Math.min(Math.max(w * 0.04, 34), 64);
+  const topHW = 26;
+
+  const main = buildTrunk(originX, w, h, mobile);
+  const segs: TrunkSegment[] = [
+    { id: "trunk-0", fillPath: main.fillPath, corePath: main.corePath, xAt: main.xAt, serves: [0, Math.min(block, n)] },
+  ];
+
+  for (let j = 1; j < k; j++) {
+    const start = j * block;
+    const end = Math.min((j + 1) * block, n);
+    if (start >= n) break;
+
+    const yBranch = h * (start / n); // depth where this sub-trunk leaves the main
+    const side = j % 2 === 1 ? 1 : -1;
+    const offset = side * Math.min(w * 0.2, 200);
+    const rng = makeRng(7000 + j * 131);
+    const phase = rng() * Math.PI * 2;
+    const branchX = main.xAt(yBranch);
+    const targetX = originX + offset;
+
+    const subXAt = (y: number) => {
+      if (y <= yBranch) return main.xAt(y);
+      const t = Math.min(1, (y - yBranch) / Math.max(1, h - yBranch));
+      const ease = 1 - Math.pow(1 - Math.min(1, t * 2.2), 3); // ease out to the offset early
+      const baseX = branchX + (targetX - branchX) * ease;
+      return baseX + amp * 0.5 * Math.sin(t * Math.PI * 3 + phase); // keep slithering
+    };
+
+    // start as thick as the main trunk is at the branch, taper to the floor
+    const hwAtBranch = Math.max(MIN_HALF_WIDTH, topHW * (1 - (yBranch / h) * 0.7));
+    const ribbon = ribbonFromXAt(subXAt, yBranch, h, Math.max(12, hwAtBranch * 0.85), MIN_HALF_WIDTH, 0.85);
+    segs.push({ id: `trunk-${j}`, fillPath: ribbon.fillPath, corePath: ribbon.corePath, xAt: subXAt, serves: [start, end] });
+  }
+
+  const trunkForIndex = (i: number) => segs.find((s) => i >= s.serves[0] && i < s.serves[1]) ?? segs[0];
+  return { trunks: segs, trunkForIndex };
+}
+
+/* ----------------------------------------------------------------------------
  * LEVEL 2 + 2.5 -- per-chapter connectors and their sub-branch rootlets
  * ------------------------------------------------------------------------- */
 
@@ -187,7 +296,7 @@ export type Branches = {
  * Each connector also sprouts 1-2 tiny rootlets (Level 2.5) that slither into
  * the soil and taper away without connecting to anything.
  */
-export function buildBranches(trunk: Trunk, card: CardBox, index: number, mobile: boolean): Branches {
+export function buildBranches(trunk: Pick<Trunk, "xAt">, card: CardBox, index: number, mobile: boolean): Branches {
   const count = 4 + (index % 2); // 4 or 5
   const lead = mobile ? 24 : 48;
   const junctionY = Math.max(0, card.topY - lead);

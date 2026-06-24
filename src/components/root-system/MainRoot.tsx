@@ -19,18 +19,17 @@ import { memo } from "react";
  */
 
 export type BranchBase = { d: string };
+export type TrunkPaths = { id: string; fillPath: string; corePath: string };
 
 function MainRootImpl({
-  trunkFill,
-  trunkCore,
+  trunks,
   capillaries,
   connectorRibbons,
   subBranches,
   mobile,
   reduce,
 }: {
-  trunkFill: string;
-  trunkCore: string;
+  trunks: TrunkPaths[];
   capillaries: string[];
   connectorRibbons: BranchBase[];
   subBranches: BranchBase[];
@@ -70,19 +69,16 @@ function MainRootImpl({
           <path key={`sub-${i}`} d={b.d} fill="url(#rn-idle)" opacity={0.85} />
         ))}
 
-        {/* Level 1 -- tapered trunk body (filled, thick -> thread) */}
-        <path d={trunkFill} fill="url(#rn-trunk)" opacity={0.97} />
-        <path d={trunkFill} fill="url(#rn-idle)" opacity={0.22} />
-        {/* trunk centre vein -- revealed by the SAME growth front (no lag, so the
-            trunk's visible tip never falls behind the branches) */}
-        <path
-          d={trunkCore}
-          fill="none"
-          stroke="url(#rn-trunk)"
-          strokeWidth={mobile ? 2 : 3}
-          strokeLinecap="round"
-          opacity={0.5}
-        />
+        {/* Level 1 -- tapered trunk body (filled, thick -> thread). One trunk
+            normally; the dynamic engine adds sub-trunks for high chapter counts. */}
+        {trunks.map((t) => (
+          <g key={t.id}>
+            <path d={t.fillPath} fill="url(#rn-trunk)" opacity={0.97} />
+            <path d={t.fillPath} fill="url(#rn-idle)" opacity={0.22} />
+            {/* centre vein -- revealed by the SAME growth front (no lag) */}
+            <path d={t.corePath} fill="none" stroke="url(#rn-trunk)" strokeWidth={mobile ? 2 : 3} strokeLinecap="round" opacity={0.5} />
+          </g>
+        ))}
 
         {/* Level 2 -- connector BASE ribbons, default unlit colour */}
         {connectorRibbons.map((b, i) => (

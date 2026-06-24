@@ -5,7 +5,7 @@ import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion
 import { MainRoot, type BranchBase } from "./MainRoot";
 import { Connectors } from "./Connectors";
 import { Particles } from "@/components/ambient/Particles";
-import { buildTrunk, buildBranches, buildCapillaries, type Branches, type CardBox } from "./geometry";
+import { buildTrunkSystem, buildBranches, buildCapillaries, type Branches, type CardBox } from "./geometry";
 import type { ChapterModule } from "@/components/chapters";
 
 /**
@@ -46,8 +46,7 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
     w: number;
     h: number;
     mobile: boolean;
-    trunkFill: string;
-    trunkCore: string;
+    trunks: { id: string; fillPath: string; corePath: string }[];
     capillaries: string[];
     branches: Branches[];
     connectAt: number[]; // scroll-drive value at which each chapter connects
@@ -71,7 +70,7 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
       // the right) never sit on top of the roots. Desktop keeps the centre trunk.
       const originX = mobile ? Math.max(34, w * 0.12) : w / 2;
 
-      const trunk = buildTrunk(originX, w, h, mobile);
+      const { trunks, trunkForIndex } = buildTrunkSystem(originX, chapters.length, w, h, mobile);
       const { layers } = buildCapillaries(originX, w, h, mobile);
 
       const branches: Branches[] = [];
@@ -94,7 +93,7 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
           centerX: (leftEdge + rightEdge) / 2,
           side,
         };
-        const b = buildBranches(trunk, card, i, mobile);
+        const b = buildBranches(trunkForIndex(i), card, i, mobile);
         branches[i] = b;
         // Bloom on physical connection: when the growth front reaches this
         // chapter's deepest dock, i.e. the branch has fully snaked in and arrived.
@@ -106,8 +105,7 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
         w,
         h,
         mobile,
-        trunkFill: trunk.fillPath,
-        trunkCore: trunk.corePath,
+        trunks: trunks.map((t) => ({ id: t.id, fillPath: t.fillPath, corePath: t.corePath })),
         capillaries: layers,
         branches,
         connectAt,
@@ -218,8 +216,7 @@ export function RootSystem({ chapters }: { chapters: ChapterModule[] }) {
         {built && (
           <>
             <MainRoot
-              trunkFill={built.trunkFill}
-              trunkCore={built.trunkCore}
+              trunks={built.trunks}
               capillaries={built.capillaries}
               connectorRibbons={connectorRibbons}
               subBranches={subBranches}
